@@ -14,9 +14,42 @@ class F:
     MAGENTA = "\033[95m"
     CYAN = "\033[96m"
     WHITE = "\033[97m"
-    BG_RED = "\033[41m"
-    BG_GREEN = "\033[42m"
     BG_BLUE = "\033[44m"
+
+# --- HAUS-GENERATOR (DYNAMISCH) ---
+def get_house_art(preis, name):
+    """Erstellt ein einzigartiges Haus basierend auf Preis und Name"""
+    letter = name[0].upper() # Der erste Buchstabe der Straße
+    
+    # TYP 1: Die Bruchbude (Billig: Preis 1-3)
+    if preis <= 3:
+        return [
+            "        ",
+            "   /\\   ",
+            "  /  \\  ",
+            f" | {letter}  | ", # Mit Buchstabe!
+            " |____| "
+        ]
+    
+    # TYP 2: Das Familienhaus (Mittel: Preis 4-6)
+    elif preis <= 6:
+        return [
+            "   /\\   ",
+            "  /  \\  ",
+            " /____\\ ",
+            f" | {letter}  | ",
+            " |____| "
+        ]
+    
+    # TYP 3: Die Luxus-Villa (Teuer: Preis 7+)
+    else:
+        return [
+            " _/||\\_ ", # Episches Dach
+            "/______\\",
+            "|  ==  |",
+            f"|  {letter}{letter}  |", # Doppeltür
+            "|______|"
+        ]
 
 # --- SYSTEM-TOOLS ---
 def clear():
@@ -29,229 +62,198 @@ def typewriter(text, speed=0.01):
         time.sleep(speed)
     print()
 
-def print_centered(text, width=50):
-    print(text.center(width))
-
 def linie():
     print(F.CYAN + "═" * 50 + F.RESET)
 
-# --- DATEN: DAS BOARD ---
-# Wir nutzen Icons für die Figuren
+# --- DATEN ---
 TOKENS = ["🍺", "🍷", "🥃", "🍸", "🍹", "🧉"]
 
-# Das Spielfeld (24 Felder für gute Spielbarkeit)
 BOARD = [
     {"name": "LOS (Start)", "typ": "start", "color": F.WHITE},
-    {"name": "Pfeffi-Gasse", "typ": "str", "preis": 2, "color": F.MAGENTA},
-    {"name": "Klopfer-Weg", "typ": "str", "preis": 2, "color": F.MAGENTA},
+    {"name": "Pfeffi-Gasse", "typ": "str", "preis": 2, "color": F.MAGENTA, "owner": None},
+    {"name": "Klopfer-Weg", "typ": "str", "preis": 2, "color": F.MAGENTA, "owner": None},
     {"name": "BAR (Ereignis)", "typ": "event", "color": F.WHITE},
-    {"name": "Radler-Ring", "typ": "str", "preis": 3, "color": F.CYAN},
-    {"name": "Bier-Bahnhof", "typ": "bahn", "preis": 4, "color": F.WHITE},
-    {"name": "Pils-Promenade", "typ": "str", "preis": 3, "color": F.CYAN},
+    {"name": "Radler-Ring", "typ": "str", "preis": 3, "color": F.CYAN, "owner": None},
+    {"name": "Bier-Bahnhof", "typ": "bahn", "preis": 4, "color": F.WHITE, "owner": None},
+    {"name": "Pils-Promenade", "typ": "str", "preis": 3, "color": F.CYAN, "owner": None},
     {"name": "Kater-Chance", "typ": "event", "color": F.WHITE},
-    {"name": "Wein-Weg", "typ": "str", "preis": 4, "color": F.MAGENTA},
-    {"name": "Rosé-Platz", "typ": "str", "preis": 4, "color": F.MAGENTA},
+    {"name": "Wein-Weg", "typ": "str", "preis": 4, "color": F.MAGENTA, "owner": None},
+    {"name": "Rosé-Platz", "typ": "str", "preis": 4, "color": F.MAGENTA, "owner": None},
     {"name": "GEFÄNGNIS", "typ": "jail", "color": F.RED},
-    {"name": "Aperol-Allee", "typ": "str", "preis": 5, "color": F.YELLOW},
-    {"name": "Sekt-Straße", "typ": "str", "preis": 5, "color": F.YELLOW},
-    {"name": "U-Bahn", "typ": "bahn", "preis": 4, "color": F.WHITE},
-    {"name": "Jägermeister-Eck", "typ": "str", "preis": 6, "color": F.GREEN},
-    {"name": "Absinth-Abgrund", "typ": "str", "preis": 6, "color": F.GREEN},
+    {"name": "Aperol-Allee", "typ": "str", "preis": 5, "color": F.YELLOW, "owner": None},
+    {"name": "Sekt-Straße", "typ": "str", "preis": 5, "color": F.YELLOW, "owner": None},
+    {"name": "U-Bahn", "typ": "bahn", "preis": 4, "color": F.WHITE, "owner": None},
+    {"name": "Jägermeister-Eck", "typ": "str", "preis": 6, "color": F.GREEN, "owner": None},
+    {"name": "Absinth-Abgrund", "typ": "str", "preis": 6, "color": F.GREEN, "owner": None},
     {"name": "FREI PARKEN", "typ": "park", "color": F.WHITE},
-    {"name": "Gin-Gasse", "typ": "str", "preis": 7, "color": F.BLUE},
-    {"name": "Rum-Runde", "typ": "str", "preis": 7, "color": F.BLUE},
-    {"name": "Taxi-Zentrale", "typ": "bahn", "preis": 4, "color": F.WHITE},
+    {"name": "Gin-Gasse", "typ": "str", "preis": 7, "color": F.BLUE, "owner": None},
+    {"name": "Rum-Runde", "typ": "str", "preis": 7, "color": F.BLUE, "owner": None},
+    {"name": "Taxi-Zentrale", "typ": "bahn", "preis": 4, "color": F.WHITE, "owner": None},
     {"name": "STEUER (Trink!)", "typ": "tax", "color": F.WHITE},
-    {"name": "Tequila-Traum", "typ": "str", "preis": 8, "color": F.RED},
+    {"name": "Tequila-Traum", "typ": "str", "preis": 8, "color": F.RED, "owner": None},
     {"name": "RISIKO", "typ": "event", "color": F.WHITE},
-    {"name": "Vodka-Villa", "typ": "str", "preis": 10, "color": F.BLUE},
+    {"name": "Vodka-Villa", "typ": "str", "preis": 10, "color": F.BLUE, "owner": None},
 ]
 
-TASKS_18 = [
-    "Wahrheit: Wen aus der Runde findest du am attraktivsten? Oder trinke 5.",
-    "Pflicht: Lass jemanden eine Nachricht an einen Kontakt deiner Wahl schreiben.",
-    "Körperkontakt: Setze dich für eine Runde auf den Schoß deines linken Nachbarn.",
-    "Strip-Light: Lege ein Teil ab oder exe dein Glas."
-]
-
-TASKS_16 = [
+TASKS = [
     "Alle trinken einen Schluck.",
-    "Kategorie: Biermarken. Wer nichts weiß, trinkt.",
+    "Der Kleinste in der Runde trinkt 2.",
     "Reimrunde: Reime auf 'Saufen'.",
-    "Verteile 5 Schlücke."
+    "Verteile 3 Schlücke."
 ]
 
 # --- KLASSEN ---
 class Spieler:
-    def __init__(self, name, token):
+    def __init__(self, name, token, pid):
         self.name = name
         self.token = token
+        self.id = pid
         self.pos = 0
         self.besitz = []
-        self.gefaengnis = False
+
+# --- AUKTIONS-FUNKTION ---
+def starte_auktion(feld, spieler_liste, aktueller_spieler):
+    print(f"\n{F.YELLOW}🔨 AUKTION GESTARTET! 🔨{F.RESET}")
+    print(f"Niemand wollte {feld['name']} zum Normalpreis.")
+    print("Wer bereit ist, am meisten zu trinken, bekommt die Straße!")
+    
+    hoechstgebot = 0
+    hoechnstbietender = None
+    
+    for s in spieler_liste:
+        if s == aktueller_spieler: continue 
+        
+        try:
+            gebot_str = input(f"{s.name} ({s.token}), wie viele Schlücke bietest du? (0 = raus) >> ")
+            gebot = int(gebot_str) if gebot_str.isdigit() else 0
+        except:
+            gebot = 0
+            
+        if gebot > hoechstgebot:
+            hoechstgebot = gebot
+            hoechnstbietender = s
+            print(f"-> {F.GREEN}Neues Höchstgebot: {gebot} Schlücke!{F.RESET}")
+    
+    if hoechnstbietender:
+        print(f"\n{F.BOLD}Verkauft an {hoechnstbietender.name} für {hoechstgebot} Schlücke!{F.RESET}")
+        print("TRINK JETZT!")
+        time.sleep(2)
+        feld["owner"] = hoechnstbietender
+        hoechnstbietender.besitz.append(feld)
+    else:
+        print("Keiner will es? Dann bleibt es bei der Bank.")
 
 # --- GRAFIK FUNKTIONEN ---
 def draw_card(feld, spieler):
-    """Zeichnet eine schöne Karte des aktuellen Feldes"""
     c = feld["color"]
     r = F.RESET
-    w = 40
+    w = 42
     
     print(f"\n{c}╔{'═'*w}╗{r}")
     
-    # Name zentriert
+    # Titel Zeile
     content = f" {feld['name']} "
     space = w - len(content)
     print(f"{c}║{r}" + (" " * (space//2)) + F.BOLD + content + F.RESET + (" " * (space - space//2)) + f"{c}║{r}")
-    
     print(f"{c}╠{'═'*w}╣{r}")
     
-    # Details je nach Typ
-    lines = []
-    if feld["typ"] == "str":
-        besitzer = "Niemand"
-        # Check owner logic later
-        lines.append(f"PREIS: {feld['preis']} Schlücke")
-        lines.append(" ")
-        lines.append("Ein Haus kaufen?")
-    elif feld["typ"] == "start":
-        lines.append("Hole dir 2 Schlücke ab!")
-    elif feld["typ"] == "event":
-        lines.append("Ziehe eine Karte...")
-        lines.append("???")
-    else:
-        lines.append(feld.get("aktion", "Nichts passiert."))
-
-    # Inhalt füllen
-    for line in lines:
-        l_len = len(line) # Achtung: Farben zählen nicht zur Länge, hier vereinfacht
-        print(f"{c}║{r} {line:<{w-2}} {c}║{r}")
+    # --- DYNAMISCHES HAUS LOGIK ---
+    if "owner" in feld and feld["owner"] is not None:
+        besitzer_name = feld["owner"].name
         
-    # Leere Zeilen auffüllen
-    for _ in range(4 - len(lines)):
-         print(f"{c}║{' ' * w}║{r}")
+        # Hier holen wir uns das einzigartige Haus für diese Straße
+        house_art = get_house_art(feld.get("preis", 0), feld["name"])
+        
+        for i, line in enumerate(house_art):
+            # Text links, Haus rechts
+            text_part = ""
+            if i == 1: text_part = f"BESITZER:"
+            if i == 2: text_part = f"{besitzer_name[:12]}" # Namen kürzen falls zu lang
+            
+            # Formatiertes Haus rechtsbündig einfügen
+            print(f"{c}║{r} {text_part:<20} {F.YELLOW}{line:<10}{r}       {c}║{r}")
+            
+    else:
+        # Standard Ansicht (Kein Haus)
+        lines = []
+        if feld["typ"] == "str" or feld["typ"] == "bahn":
+            lines.append(f"PREIS: {feld['preis']} Schlücke")
+            lines.append("(Noch zu haben!)")
+        elif feld["typ"] == "event":
+            lines.append("ZIEHE EINE KARTE...")
+        else:
+            lines.append(feld.get("aktion", ""))
+            
+        for line in lines:
+            print(f"{c}║{r} {line:<{w-2}} {c}║{r}")
+        for _ in range(5 - len(lines)): 
+            print(f"{c}║{' ' * w}║{r}")
 
-    # Footer mit Spieler
     print(f"{c}╚{'═'*w}╝{r}")
-    print(f"   {spieler.token} {spieler.name} ist hier gelandet.\n")
-
-def animierter_wuerfel():
-    print("🎲 Würfel rollt...", end="")
-    for _ in range(3):
-        time.sleep(0.2)
-        sys.stdout.write(".")
-        sys.stdout.flush()
-    val = random.randint(1, 6)
-    print(f" {F.BOLD}{F.YELLOW}{val}!{F.RESET}")
-    return val
+    print(f"   {spieler.token} {spieler.name} ist hier.\n")
 
 # --- MAIN ENGINE ---
 def spiel_starten():
     clear()
-    print(f"{F.YELLOW}")
-    print("  __  __  ____  _   _  ____  _____  ____  __  __   __ ")
-    print(" |  \/  |/ __ \| \ | |/ __ \|  __ \| __ \|  \/  | |  |")
-    print(" | \  / | |  | |  \| | |  | | |__) | |  | | \  / | |  |")
-    print(" | |\/| | |  | | . ` | |  | |  ___/| |  | | |\/| | |  |")
-    print(" | |  | | |__| | |\  | |__| | |    | |__| | |  | | |__|")
-    print(" |_|  |_|\____/|_| \_|\____/|_|    |_____/|_|  |_| (__)  ")
-    print(f"{F.RESET}")
-    print("       Die ultimative Sauf-Edition v3.0 (Visual)")
-    linie()
+    print(f"{F.YELLOW}--- SAUF-MONOPOLY V4.0 (Custom Houses) ---{F.RESET}")
     
-    # 1. SETUP
-    print("Wie viele Leute saufen mit? (2-6)")
     try:
-        anzahl = int(input(">> "))
+        anzahl = int(input("Anzahl Spieler (2-6): "))
     except:
         anzahl = 2
-    
-    print("\nModus? [1] Party (16+) | [2] Eskalation (18+)")
-    modus_wahl = input(">> ")
-    kartenstapel = TASKS_18 if modus_wahl == "2" else TASKS_16
-    
+        
     spieler_liste = []
-    
     for i in range(anzahl):
         token = TOKENS[i % len(TOKENS)]
-        print(f"\nSpieler {i+1}, gib deinen Namen ein:")
+        print(f"Name Spieler {i+1}:")
         name = input(f"({token}) >> ")
-        if name == "": name = f"Spieler {i+1}"
-        spieler_liste.append(Spieler(name, token))
+        if not name: name = f"Spieler {i+1}"
+        spieler_liste.append(Spieler(name, token, i))
     
-    # 2. GAME LOOP
     running = True
-    runde = 1
     
     while running:
         for spieler in spieler_liste:
             clear()
-            print(f"{F.BG_BLUE}{F.WHITE} RUNDE {runde} {F.RESET} | {spieler.token} {F.BOLD}{spieler.name}{F.RESET} ist dran!")
-            linie()
+            print(f"{F.BG_BLUE}{F.WHITE} {spieler.name} ist dran {F.RESET}")
+            input(">> [ENTER] würfeln")
             
-            # Status Board anzeigen
-            print(f"Position: {BOARD[spieler.pos]['name']}")
-            print("Drücke [ENTER] zum Würfeln...")
-            input()
-            
-            wurf = animierter_wuerfel()
-            
-            # Bewegung animieren (Text)
-            print("Du läufst los...")
-            alter_pos = spieler.pos
-            for _ in range(wurf):
-                time.sleep(0.3)
-                spieler.pos = (spieler.pos + 1) % len(BOARD)
-                # Kleines visuelles Feedback beim Laufen
-                sys.stdout.write(f" -> {BOARD[spieler.pos]['name'][:3]}")
-                sys.stdout.flush()
-            print("\n")
-            
-            # Über LOS Check
-            if spieler.pos < alter_pos:
-                print(f"{F.GREEN} $$$ ÜBER LOS! $$$ {F.RESET} Verteile 2 Schlücke!")
-                time.sleep(1)
-
-            aktuelles_feld = BOARD[spieler.pos]
-            
-            # VISUALISIERUNG DER KARTE
-            draw_card(aktuelles_feld, spieler)
+            # Würfeln
+            wurf = random.randint(1, 6)
+            print(f"🎲 Du hast eine {F.BOLD}{wurf}{F.RESET} gewürfelt.")
             time.sleep(0.5)
             
-            # LOGIK
+            spieler.pos = (spieler.pos + wurf) % len(BOARD)
+            aktuelles_feld = BOARD[spieler.pos]
+            
+            # Karte zeichnen (Mit dynamischem Haus!)
+            draw_card(aktuelles_feld, spieler)
+            
+            # Logik
             typ = aktuelles_feld["typ"]
             
             if typ == "str" or typ == "bahn":
-                besitzer = None
-                # Check ob gekauft (einfache Logik)
-                for s in spieler_liste:
-                    if spieler.pos in s.besitz:
-                        besitzer = s
-                
-                if besitzer is None:
-                    print(f"Zu kaufen für {aktuelles_feld['preis']} Schlücke?")
-                    entscheidung = input("[j] Kaufen (trinken) | [n] Weiter >> ")
-                    if entscheidung.lower() == "j":
-                        print(f"{F.GREEN}Gekauft!{F.RESET} Das gehört jetzt dir.")
-                        spieler.besitz.append(spieler.pos)
+                if aktuelles_feld["owner"] is None:
+                    print(f"Kaufen für {aktuelles_feld['preis']} Schlücke? (j/n)")
+                    wahl = input(">> ").lower()
+                    
+                    if wahl == "j":
+                        print(f"{F.GREEN}GEKAUFT! Trink aus!{F.RESET}")
+                        aktuelles_feld["owner"] = spieler
+                        spieler.besitz.append(aktuelles_feld)
                     else:
-                        print("Du ziehst weiter.")
-                elif besitzer == spieler:
-                    print(f"{F.GREEN}Willkommen zuhause!{F.RESET}")
+                        starte_auktion(aktuelles_feld, spieler_liste, spieler)
+                        
+                elif aktuelles_feld["owner"] == spieler:
+                    print("Dein Eigentum. Entspann dich.")
                 else:
                     miete = aktuelles_feld['preis']
-                    print(f"{F.RED}STOPP!{F.RESET} Das gehört {besitzer.name}.")
-                    print(f"Zahle {miete} Schlücke Miete!")
+                    print(f"{F.RED}MIETE FÄLLIG!{F.RESET} Trinke {miete} Schlücke.")
             
-            elif typ == "event" or typ == "jail":
-                aufgabe = random.choice(kartenstapel)
-                print(f"{F.YELLOW}AUFGABE:{F.RESET}")
-                typewriter(aufgabe, 0.05)
-            
-            print("\n" + "-"*30)
-            input("Drücke Enter für den nächsten Spieler...")
-        
-        runde += 1
+            elif typ == "event":
+                print(f"🃏 {random.choice(TASKS)}")
+                
+            input("\n[ENTER] Weiter...")
 
 if __name__ == "__main__":
     spiel_starten()
