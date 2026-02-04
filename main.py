@@ -1,126 +1,256 @@
-import random
+import sys
 import time
+import random
 import os
 
-# --- AUFGABEN-POOLS ---
+# --- FARBEN & DESIGN ---
+class F:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    MAGENTA = "\033[95m"
+    CYAN = "\033[96m"
+    WHITE = "\033[97m"
+    BG_RED = "\033[41m"
+    BG_GREEN = "\033[42m"
+    BG_BLUE = "\033[44m"
 
-# Basis-Aufgaben (für alle Modi)
-TASKS_COMMON = [
-    "Alle trinken einen Schluck auf die Freundschaft.",
-    "Kategorie-Spiel: Automarken. Der erste, dem nichts einfällt, trinkt 2.",
-    "Reim-Runde: Ein Wort reimen. Wer es nicht schafft, trinkt.",
-    "Der Spieler links von dir darf eine Regel erfinden.",
-    "Alle, die ein 'e' im Namen haben, trinken."
-]
-
-# Modus 16+: Fokus auf Trinken & Party
-TASKS_16 = [
-    "Wasserfall! Alle trinken, bis du absetzt.",
-    "Verteile 4 Schlücke an jemanden, der noch nüchtern aussieht.",
-    "Schere-Stein-Papier gegen den Bankhalter. Verlierer trinkt 3.",
-    "Medusa: Alle schauen nach unten. Auf 3 hochschauen. Wer Blickkontakt hat, trinkt.",
-    "Fragerunde: Du bist der 'Question Master'. Wer deine Fragen beantwortet, trinkt."
-]
-
-# Modus 18+: Fokus auf Wahrheit, Pflicht & Intimeres (Hot Seat)
-TASKS_18 = [
-    "Wahrheit oder Drink: Erzähle deinen peinlichsten Kuss-Moment oder trinke 4.",
-    "Körperkontakt: Umarme den Spieler rechts von dir für 10 Sekunden (oder beide trinken 3).",
-    "Handy-Check: Lies die letzte WhatsApp-Nachricht vor oder trinke 5.",
-    "Strip-Poker Light: Lege ein Kleidungsstück ab (Socken zählen!) oder trinke den Rest deines Glases.",
-    "Hot Seat: Die Gruppe darf dir eine intime Frage stellen. Antworte ehrlich oder trinke 5.",
-    "Kuss-Roulette: Wirf eine Münze. Kopf = Kuss auf die Wange bei links, Zahl = bei rechts. Verweigern = 5 Schlücke.",
-    "Bewerte die Fahrkünste deiner Mitspieler. Der Schlechteste trinkt 3 aus Frust."
-]
-
-# SPIELFELD-STRUKTUR (Kompakt)
-SPIELFELD = [
-    {"name": "LOS", "typ": "start"},
-    {"name": "Kneipenstraße", "typ": "feld", "preis": 2},
-    {"name": "EREIGNIS", "typ": "karte"},
-    {"name": "Bier-Allee", "typ": "feld", "preis": 3},
-    {"name": "POLIZEIKONTROLLE", "typ": "strafe", "aktion": "Pusten! Wenn du lallst, trinke 3."},
-    {"name": "Bahnhof Nord", "typ": "feld", "preis": 4},
-    {"name": "Schnapsgasse", "typ": "feld", "preis": 4},
-    {"name": "EREIGNIS", "typ": "karte"},
-    {"name": "Clubmeile", "typ": "feld", "preis": 5},
-    {"name": "AUSNÜCHTERUNGSZELLE", "typ": "pause", "aktion": "Besuch: Alles gut. Pause."},
-    {"name": "Weinberg", "typ": "feld", "preis": 5},
-    {"name": "EREIGNIS", "typ": "karte"},
-    {"name": "Wodka-Platz", "typ": "feld", "preis": 6},
-    {"name": "Blackout-Boulevard", "typ": "feld", "preis": 8},
-]
-
-class Spieler:
-    def __init__(self, name):
-        self.name = name
-        self.position = 0
-        self.besitz = []
-
-def clear_screen():
-    # Löscht den Bildschirm für bessere Übersicht (funktioniert in den meisten Terminals)
+# --- SYSTEM-TOOLS ---
+def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def typewriter(text, speed=0.01):
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(speed)
+    print()
+
+def print_centered(text, width=50):
+    print(text.center(width))
+
+def linie():
+    print(F.CYAN + "═" * 50 + F.RESET)
+
+# --- DATEN: DAS BOARD ---
+# Wir nutzen Icons für die Figuren
+TOKENS = ["🍺", "🍷", "🥃", "🍸", "🍹", "🧉"]
+
+# Das Spielfeld (24 Felder für gute Spielbarkeit)
+BOARD = [
+    {"name": "LOS (Start)", "typ": "start", "color": F.WHITE},
+    {"name": "Pfeffi-Gasse", "typ": "str", "preis": 2, "color": F.MAGENTA},
+    {"name": "Klopfer-Weg", "typ": "str", "preis": 2, "color": F.MAGENTA},
+    {"name": "BAR (Ereignis)", "typ": "event", "color": F.WHITE},
+    {"name": "Radler-Ring", "typ": "str", "preis": 3, "color": F.CYAN},
+    {"name": "Bier-Bahnhof", "typ": "bahn", "preis": 4, "color": F.WHITE},
+    {"name": "Pils-Promenade", "typ": "str", "preis": 3, "color": F.CYAN},
+    {"name": "Kater-Chance", "typ": "event", "color": F.WHITE},
+    {"name": "Wein-Weg", "typ": "str", "preis": 4, "color": F.MAGENTA},
+    {"name": "Rosé-Platz", "typ": "str", "preis": 4, "color": F.MAGENTA},
+    {"name": "GEFÄNGNIS", "typ": "jail", "color": F.RED},
+    {"name": "Aperol-Allee", "typ": "str", "preis": 5, "color": F.YELLOW},
+    {"name": "Sekt-Straße", "typ": "str", "preis": 5, "color": F.YELLOW},
+    {"name": "U-Bahn", "typ": "bahn", "preis": 4, "color": F.WHITE},
+    {"name": "Jägermeister-Eck", "typ": "str", "preis": 6, "color": F.GREEN},
+    {"name": "Absinth-Abgrund", "typ": "str", "preis": 6, "color": F.GREEN},
+    {"name": "FREI PARKEN", "typ": "park", "color": F.WHITE},
+    {"name": "Gin-Gasse", "typ": "str", "preis": 7, "color": F.BLUE},
+    {"name": "Rum-Runde", "typ": "str", "preis": 7, "color": F.BLUE},
+    {"name": "Taxi-Zentrale", "typ": "bahn", "preis": 4, "color": F.WHITE},
+    {"name": "STEUER (Trink!)", "typ": "tax", "color": F.WHITE},
+    {"name": "Tequila-Traum", "typ": "str", "preis": 8, "color": F.RED},
+    {"name": "RISIKO", "typ": "event", "color": F.WHITE},
+    {"name": "Vodka-Villa", "typ": "str", "preis": 10, "color": F.BLUE},
+]
+
+TASKS_18 = [
+    "Wahrheit: Wen aus der Runde findest du am attraktivsten? Oder trinke 5.",
+    "Pflicht: Lass jemanden eine Nachricht an einen Kontakt deiner Wahl schreiben.",
+    "Körperkontakt: Setze dich für eine Runde auf den Schoß deines linken Nachbarn.",
+    "Strip-Light: Lege ein Teil ab oder exe dein Glas."
+]
+
+TASKS_16 = [
+    "Alle trinken einen Schluck.",
+    "Kategorie: Biermarken. Wer nichts weiß, trinkt.",
+    "Reimrunde: Reime auf 'Saufen'.",
+    "Verteile 5 Schlücke."
+]
+
+# --- KLASSEN ---
+class Spieler:
+    def __init__(self, name, token):
+        self.name = name
+        self.token = token
+        self.pos = 0
+        self.besitz = []
+        self.gefaengnis = False
+
+# --- GRAFIK FUNKTIONEN ---
+def draw_card(feld, spieler):
+    """Zeichnet eine schöne Karte des aktuellen Feldes"""
+    c = feld["color"]
+    r = F.RESET
+    w = 40
+    
+    print(f"\n{c}╔{'═'*w}╗{r}")
+    
+    # Name zentriert
+    content = f" {feld['name']} "
+    space = w - len(content)
+    print(f"{c}║{r}" + (" " * (space//2)) + F.BOLD + content + F.RESET + (" " * (space - space//2)) + f"{c}║{r}")
+    
+    print(f"{c}╠{'═'*w}╣{r}")
+    
+    # Details je nach Typ
+    lines = []
+    if feld["typ"] == "str":
+        besitzer = "Niemand"
+        # Check owner logic later
+        lines.append(f"PREIS: {feld['preis']} Schlücke")
+        lines.append(" ")
+        lines.append("Ein Haus kaufen?")
+    elif feld["typ"] == "start":
+        lines.append("Hole dir 2 Schlücke ab!")
+    elif feld["typ"] == "event":
+        lines.append("Ziehe eine Karte...")
+        lines.append("???")
+    else:
+        lines.append(feld.get("aktion", "Nichts passiert."))
+
+    # Inhalt füllen
+    for line in lines:
+        l_len = len(line) # Achtung: Farben zählen nicht zur Länge, hier vereinfacht
+        print(f"{c}║{r} {line:<{w-2}} {c}║{r}")
+        
+    # Leere Zeilen auffüllen
+    for _ in range(4 - len(lines)):
+         print(f"{c}║{' ' * w}║{r}")
+
+    # Footer mit Spieler
+    print(f"{c}╚{'═'*w}╝{r}")
+    print(f"   {spieler.token} {spieler.name} ist hier gelandet.\n")
+
+def animierter_wuerfel():
+    print("🎲 Würfel rollt...", end="")
+    for _ in range(3):
+        time.sleep(0.2)
+        sys.stdout.write(".")
+        sys.stdout.flush()
+    val = random.randint(1, 6)
+    print(f" {F.BOLD}{F.YELLOW}{val}!{F.RESET}")
+    return val
+
+# --- MAIN ENGINE ---
 def spiel_starten():
-    clear_screen()
-    print("🍾 WILLKOMMEN BEIM GITHUB-TRINK-MONOPOLY 🍾")
-    print("---------------------------------------------")
+    clear()
+    print(f"{F.YELLOW}")
+    print("  __  __  ____  _   _  ____  _____  ____  __  __   __ ")
+    print(" |  \/  |/ __ \| \ | |/ __ \|  __ \| __ \|  \/  | |  |")
+    print(" | \  / | |  | |  \| | |  | | |__) | |  | | \  / | |  |")
+    print(" | |\/| | |  | | . ` | |  | |  ___/| |  | | |\/| | |  |")
+    print(" | |  | | |__| | |\  | |__| | |    | |__| | |  | | |__|")
+    print(" |_|  |_|\____/|_| \_|\____/|_|    |_____/|_|  |_| (__)  ")
+    print(f"{F.RESET}")
+    print("       Die ultimative Sauf-Edition v3.0 (Visual)")
+    linie()
     
-    # Modus-Auswahl
-    while True:
-        try:
-            modus = int(input("Wähle den Modus:\n[1] 16+ (Party & Trinken)\n[2] 18+ (Wahrheit, Pflicht & Spicy)\n>> Deine Wahl: "))
-            if modus in [1, 2]:
-                break
-        except ValueError:
-            pass
-            
-    aktiver_kartenstapel = TASKS_COMMON + (TASKS_16 if modus == 1 else TASKS_18)
-    modus_name = "PARTY (16+)" if modus == 1 else "HARDCORE (18+)"
+    # 1. SETUP
+    print("Wie viele Leute saufen mit? (2-6)")
+    try:
+        anzahl = int(input(">> "))
+    except:
+        anzahl = 2
     
-    print(f"\nModus gewählt: {modus_name}")
-    anzahl = int(input("Anzahl der Spieler: "))
-    spieler_liste = [Spieler(input(f"Name Spieler {i+1}: ")) for i in range(anzahl)]
+    print("\nModus? [1] Party (16+) | [2] Eskalation (18+)")
+    modus_wahl = input(">> ")
+    kartenstapel = TASKS_18 if modus_wahl == "2" else TASKS_16
     
-    runde = 1
+    spieler_liste = []
+    
+    for i in range(anzahl):
+        token = TOKENS[i % len(TOKENS)]
+        print(f"\nSpieler {i+1}, gib deinen Namen ein:")
+        name = input(f"({token}) >> ")
+        if name == "": name = f"Spieler {i+1}"
+        spieler_liste.append(Spieler(name, token))
+    
+    # 2. GAME LOOP
     running = True
+    runde = 1
     
     while running:
-        print(f"\n--- RUNDE {runde} ({modus_name}) ---")
         for spieler in spieler_liste:
-            input(f"\n>> {spieler.name} würfelt... [ENTER]")
+            clear()
+            print(f"{F.BG_BLUE}{F.WHITE} RUNDE {runde} {F.RESET} | {spieler.token} {F.BOLD}{spieler.name}{F.RESET} ist dran!")
+            linie()
             
-            wurf = random.randint(1, 6)
-            print(f"🎲 Wurf: {wurf}")
+            # Status Board anzeigen
+            print(f"Position: {BOARD[spieler.pos]['name']}")
+            print("Drücke [ENTER] zum Würfeln...")
+            input()
             
-            spieler.position = (spieler.position + wurf) % len(SPIELFELD)
-            feld = SPIELFELD[spieler.position]
+            wurf = animierter_wuerfel()
             
-            print(f"📍 Feld: {feld['name']}")
+            # Bewegung animieren (Text)
+            print("Du läufst los...")
+            alter_pos = spieler.pos
+            for _ in range(wurf):
+                time.sleep(0.3)
+                spieler.pos = (spieler.pos + 1) % len(BOARD)
+                # Kleines visuelles Feedback beim Laufen
+                sys.stdout.write(f" -> {BOARD[spieler.pos]['name'][:3]}")
+                sys.stdout.flush()
+            print("\n")
             
-            if feld["typ"] == "feld":
-                # Vereinfachte Kauf-Logik für schnelleren Spielfluss
-                if any(spieler.position in s.besitz for s in spieler_liste):
-                    besitzer = next(s for s in spieler_liste if spieler.position in s.besitz)
-                    if besitzer != spieler:
-                        print(f"💸 Gehört {besitzer.name}. Trinke {feld['preis']} Schlücke Miete!")
-                    else:
-                        print("🏠 Dein Haus. Alles entspannt.")
-                else:
-                    print(f"Kaufen für {feld['preis']} Schlücke? (j/n)")
-                    if input(">> ").lower() == "j":
-                        spieler.besitz.append(spieler.position)
-                        print("✅ Gekauft! Du hast getrunken.")
+            # Über LOS Check
+            if spieler.pos < alter_pos:
+                print(f"{F.GREEN} $$$ ÜBER LOS! $$$ {F.RESET} Verteile 2 Schlücke!")
+                time.sleep(1)
+
+            aktuelles_feld = BOARD[spieler.pos]
             
-            elif feld["typ"] == "karte":
-                karte = random.choice(aktiver_kartenstapel)
-                print(f"🃏 AUFGABE: {karte}")
+            # VISUALISIERUNG DER KARTE
+            draw_card(aktuelles_feld, spieler)
+            time.sleep(0.5)
             
-            elif "aktion" in feld:
-                print(f"⚡ {feld['aktion']}")
+            # LOGIK
+            typ = aktuelles_feld["typ"]
+            
+            if typ == "str" or typ == "bahn":
+                besitzer = None
+                # Check ob gekauft (einfache Logik)
+                for s in spieler_liste:
+                    if spieler.pos in s.besitz:
+                        besitzer = s
                 
-        if input("\nNächste Runde? (q zum Beenden, Enter weiter): ").lower() == "q":
-            running = False
+                if besitzer is None:
+                    print(f"Zu kaufen für {aktuelles_feld['preis']} Schlücke?")
+                    entscheidung = input("[j] Kaufen (trinken) | [n] Weiter >> ")
+                    if entscheidung.lower() == "j":
+                        print(f"{F.GREEN}Gekauft!{F.RESET} Das gehört jetzt dir.")
+                        spieler.besitz.append(spieler.pos)
+                    else:
+                        print("Du ziehst weiter.")
+                elif besitzer == spieler:
+                    print(f"{F.GREEN}Willkommen zuhause!{F.RESET}")
+                else:
+                    miete = aktuelles_feld['preis']
+                    print(f"{F.RED}STOPP!{F.RESET} Das gehört {besitzer.name}.")
+                    print(f"Zahle {miete} Schlücke Miete!")
+            
+            elif typ == "event" or typ == "jail":
+                aufgabe = random.choice(kartenstapel)
+                print(f"{F.YELLOW}AUFGABE:{F.RESET}")
+                typewriter(aufgabe, 0.05)
+            
+            print("\n" + "-"*30)
+            input("Drücke Enter für den nächsten Spieler...")
+        
         runde += 1
 
 if __name__ == "__main__":
